@@ -50,7 +50,20 @@ python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'MPS ava
 
 ## Quick Start
 
-### 1. Data Exploration
+### 1. Setup Data
+
+The datasets (XQuAD and SQuAD 2.0) will be automatically downloaded when you run the experiments:
+
+```bash
+# Data will be cached in ./cache/ directory (excluded from git)
+# XQuAD: ~141MB (11 languages)
+# SQuAD 2.0: ~130MB
+# Total: ~271MB (downloaded automatically)
+```
+
+**Note**: Cache files are excluded from the repository due to GitHub's 100MB file size limit. They will be downloaded automatically when you run experiments.
+
+### 2. Data Exploration
 
 Start with the data exploration notebook to understand the datasets:
 
@@ -58,7 +71,7 @@ Start with the data exploration notebook to understand the datasets:
 jupyter notebook notebooks/01_data_exploration.ipynb
 ```
 
-### 2. Run Zero-Shot Experiments
+### 3. Run Zero-Shot Experiments
 
 Train models on English SQuAD 2.0 and evaluate on all XQuAD languages:
 
@@ -70,7 +83,7 @@ python experiments/run_zero_shot.py --output-dir ./results --cache-dir ./cache
 jupyter notebook notebooks/04_zero_shot_experiments.ipynb
 ```
 
-### 3. Run Few-Shot Experiments
+### 4. Run Few-Shot Experiments
 
 Fine-tune models with few examples per language:
 
