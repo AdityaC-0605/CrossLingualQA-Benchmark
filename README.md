@@ -34,7 +34,7 @@ This project implements and compares cross-lingual question answering systems us
 
 1. **Clone the repository**:
 ```bash
-git clone <repository-url>
+git clone https://github.com/AdityaC-0605/CrossLingualQA-Benchmark.git
 cd cross-lingual-qa-system
 ```
 
