@@ -1,9 +1,9 @@
 """
-Streamlit Dashboard for Cross-Lingual QA Results
-===============================================
+Enhanced Streamlit Dashboard for Cross-Lingual QA Results
+=======================================================
 
-Interactive dashboard to visualize and analyze cross-lingual question answering
-experiment results from mBERT and mT5 models.
+A modern, intuitive dashboard for visualizing and analyzing cross-lingual 
+question answering experiment results from mBERT and mT5 models.
 """
 
 import streamlit as st
@@ -17,12 +17,10 @@ import yaml
 from pathlib import Path
 import sys
 import os
+from datetime import datetime
 
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent / "src"))
-
-from evaluation.analysis import ResultAnalyzer, StatisticalAnalyzer, ResultVisualizer
-from utils.device_utils import DeviceManager
 
 # Page configuration
 st.set_page_config(
@@ -32,133 +30,213 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Enhanced Custom CSS
+# Enhanced Modern CSS
 st.markdown("""
 <style>
-    /* Main header styling */
-    .main-header {
-        font-size: 3rem;
-        color: #1f77b4;
-        text-align: center;
-        margin-bottom: 2rem;
-        font-weight: 700;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+    /* Import Google Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    /* Global Styles */
+    .main {
+        font-family: 'Inter', sans-serif;
     }
     
-    /* Enhanced metric cards */
-    .metric-card {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    /* Custom Header */
+    .main-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem 0;
+        border-radius: 20px;
+        margin-bottom: 2rem;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+    
+    .main-header h1 {
+        color: white;
+        font-size: 3rem;
+        font-weight: 700;
+        margin: 0;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .main-header p {
+        color: rgba(255,255,255,0.9);
+        font-size: 1.2rem;
+        margin: 0.5rem 0 0 0;
+        font-weight: 400;
+    }
+    
+    /* Sidebar Styling */
+    .css-1d391kg {
+        background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+    
+    .sidebar-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 1.5rem;
         border-radius: 15px;
-        border-left: 5px solid #1f77b4;
-        box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
-        backdrop-filter: blur(4px);
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        transition: transform 0.3s ease;
+        margin-bottom: 1.5rem;
+        text-align: center;
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
     }
     
-    .metric-card:hover {
-        transform: translateY(-5px);
+    .sidebar-header h2 {
+        color: white;
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 600;
     }
     
-    /* Language cards */
-    .language-card {
+    /* Control Cards */
+    .control-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 15px;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    .control-card h3 {
+        color: #495057;
+        margin: 0 0 1rem 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    /* Metric Cards */
+    .metric-card {
         background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
         padding: 1.5rem;
         border-radius: 15px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        margin: 0.5rem 0;
-        border: 1px solid rgba(0,0,0,0.05);
-        transition: all 0.3s ease;
+        border-left: 5px solid #667eea;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        margin: 1rem 0;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
     
-    .language-card:hover {
-        box-shadow: 0 8px 30px rgba(0,0,0,0.15);
-        transform: translateY(-2px);
+    .metric-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
     }
     
-    /* Sidebar styling */
-    .css-1d391kg {
-        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+    /* Status Indicators */
+    .status-excellent {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        border-left-color: #28a745;
     }
     
-    /* Tab styling */
+    .status-good {
+        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+        border-left-color: #17a2b8;
+    }
+    
+    .status-warning {
+        background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+        border-left-color: #ffc107;
+    }
+    
+    /* Tab Styling */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 2px;
+        gap: 5px;
+        background: #f8f9fa;
+        padding: 5px;
+        border-radius: 15px;
     }
     
     .stTabs [data-baseweb="tab"] {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        border-radius: 10px 10px 0 0;
-        padding: 0.5rem 1rem;
-        font-weight: 600;
+        background: white;
+        border-radius: 10px;
+        padding: 0.8rem 1.5rem;
+        font-weight: 500;
         transition: all 0.3s ease;
+        border: 1px solid transparent;
     }
     
     .stTabs [aria-selected="true"] {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
+        border: 1px solid #667eea;
+        box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
     }
     
-    /* Button styling */
+    /* Button Styling */
     .stButton > button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         border: none;
         border-radius: 10px;
-        padding: 0.5rem 1rem;
-        font-weight: 600;
+        padding: 0.6rem 1.5rem;
+        font-weight: 500;
         transition: all 0.3s ease;
+        box-shadow: 0 3px 10px rgba(102, 126, 234, 0.2);
     }
     
     .stButton > button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
     }
     
-    /* Selectbox styling */
+    /* Selectbox Styling */
     .stSelectbox > div > div {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        background: white;
         border-radius: 10px;
+        border: 1px solid #dee2e6;
+        transition: all 0.3s ease;
     }
     
-    /* Success/Error message styling */
+    .stSelectbox > div > div:hover {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    /* Multiselect Styling */
+    .stMultiSelect > div > div {
+        background: white;
+        border-radius: 10px;
+        border: 1px solid #dee2e6;
+    }
+    
+    /* Alert Styling */
     .stSuccess {
         background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
         border: 1px solid #c3e6cb;
-        border-radius: 10px;
+        border-radius: 15px;
+        padding: 1rem;
     }
     
     .stError {
         background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
         border: 1px solid #f5c6cb;
-        border-radius: 10px;
+        border-radius: 15px;
+        padding: 1rem;
     }
     
     .stWarning {
         background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
         border: 1px solid #ffeaa7;
-        border-radius: 10px;
+        border-radius: 15px;
+        padding: 1rem;
     }
     
     .stInfo {
         background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
         border: 1px solid #bee5eb;
-        border-radius: 10px;
+        border-radius: 15px;
+        padding: 1rem;
     }
     
-    /* Loading spinner */
+    /* Loading Spinner */
     .stSpinner {
         border: 4px solid #f3f3f3;
         border-top: 4px solid #667eea;
         border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        animation: spin 2s linear infinite;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
     }
     
     @keyframes spin {
@@ -166,7 +244,57 @@ st.markdown("""
         100% { transform: rotate(360deg); }
     }
     
-    /* Custom scrollbar */
+    /* Content Sections */
+    .content-section {
+        background: white;
+        padding: 2rem;
+        border-radius: 20px;
+        margin-bottom: 2rem;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    .section-header {
+        color: #495057;
+        font-size: 1.8rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+    }
+    
+    /* Quick Stats */
+    .quick-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin: 1.5rem 0;
+    }
+    
+    .stat-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 1.5rem;
+        border-radius: 15px;
+        text-align: center;
+        border: 1px solid #dee2e6;
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #667eea;
+        margin: 0;
+    }
+    
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+        margin: 0.5rem 0 0 0;
+        font-weight: 500;
+    }
+    
+    /* Custom Scrollbar */
     ::-webkit-scrollbar {
         width: 8px;
     }
@@ -183,6 +311,21 @@ st.markdown("""
     
     ::-webkit-scrollbar-thumb:hover {
         background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .main-header h1 {
+            font-size: 2rem;
+        }
+        
+        .main-header p {
+            font-size: 1rem;
+        }
+        
+        .content-section {
+            padding: 1rem;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -263,55 +406,46 @@ def create_language_family_mapping():
         'indo_aryan': ['hi']
     }
 
-def main():
-    """Main dashboard application."""
+def get_language_names():
+    """Get human-readable language names."""
+    return {
+        'en': 'English', 'es': 'Spanish', 'de': 'German', 'el': 'Greek',
+        'ru': 'Russian', 'tr': 'Turkish', 'ar': 'Arabic', 'vi': 'Vietnamese',
+        'th': 'Thai', 'zh': 'Chinese', 'hi': 'Hindi'
+    }
+
+def create_sidebar():
+    """Create the enhanced sidebar with better organization."""
     
-    # Header with enhanced styling
-    st.markdown('<h1 class="main-header">🌍 Cross-Lingual QA Dashboard</h1>', unsafe_allow_html=True)
-    
-    # Enhanced subtitle with better formatting
-    st.markdown("""
-    <div style="text-align: center; margin-bottom: 2rem;">
-        <p style="font-size: 1.2rem; color: #666; font-weight: 500;">
-            🚀 Interactive visualization of mBERT vs mT5 cross-lingual question answering results
-        </p>
-        <p style="font-size: 1rem; color: #888; margin-top: 0.5rem;">
-            Explore performance metrics, statistical analysis, and comparative insights across 11 languages
-        </p>
+    # Sidebar Header
+    st.sidebar.markdown("""
+    <div class="sidebar-header">
+        <h2>🎛️ Dashboard Controls</h2>
     </div>
     """, unsafe_allow_html=True)
     
-    # Load data with enhanced progress indicator
-    with st.spinner("🔄 Loading configurations and results..."):
-        configs = load_configurations()
+    # Load data
+    with st.spinner("🔄 Loading data..."):
         results = load_results()
         summary_metrics = create_summary_metrics(results)
-        language_families = create_language_family_mapping()
     
-    # Success message when data loads
-    if results:
-        st.success("✅ Data loaded successfully! Ready to explore your cross-lingual QA results.")
+    if not results:
+        st.sidebar.error("❌ No results found!")
+        st.sidebar.info("💡 Run experiments first:\n- `python experiments/run_zero_shot.py`\n- `python experiments/run_few_shot.py`")
+        return None, None, None, None, None
     
-    # Enhanced Sidebar
+    # Model Selection
     st.sidebar.markdown("""
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                padding: 1rem; border-radius: 10px; margin-bottom: 1rem;">
-        <h2 style="color: white; text-align: center; margin: 0;">📊 Dashboard Controls</h2>
+    <div class="control-card">
+        <h3>🤖 Model Selection</h3>
     </div>
     """, unsafe_allow_html=True)
     
-    # Model selection with enhanced styling
-    st.sidebar.markdown("### 🤖 Model Selection")
     available_models = []
     if "zero_shot_mbert" in results:
         available_models.append("mBERT")
     if "zero_shot_mt5" in results:
         available_models.append("mT5")
-    
-    if not available_models:
-        st.sidebar.error("❌ No results found!")
-        st.sidebar.info("💡 Run experiments first:\n- `python experiments/run_zero_shot.py`\n- `python experiments/run_few_shot.py`")
-        return
     
     selected_models = st.sidebar.multiselect(
         "Choose models to compare",
@@ -320,10 +454,13 @@ def main():
         help="Select which models to include in the analysis"
     )
     
-    st.sidebar.markdown("---")
+    # Experiment Type Selection
+    st.sidebar.markdown("""
+    <div class="control-card">
+        <h3>🧪 Experiment Types</h3>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Experiment type selection
-    st.sidebar.markdown("### 🧪 Experiment Types")
     experiment_types = st.sidebar.multiselect(
         "Select experiment types",
         ["Zero-Shot", "Few-Shot"],
@@ -331,16 +468,15 @@ def main():
         help="Choose which experiment types to analyze"
     )
     
-    st.sidebar.markdown("---")
+    # Language Selection
+    st.sidebar.markdown("""
+    <div class="control-card">
+        <h3>🌍 Language Selection</h3>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Language selection with enhanced formatting
-    st.sidebar.markdown("### 🌍 Language Selection")
     all_languages = ['en', 'es', 'de', 'el', 'ru', 'tr', 'ar', 'vi', 'th', 'zh', 'hi']
-    language_names = {
-        'en': 'English', 'es': 'Spanish', 'de': 'German', 'el': 'Greek',
-        'ru': 'Russian', 'tr': 'Turkish', 'ar': 'Arabic', 'vi': 'Vietnamese',
-        'th': 'Thai', 'zh': 'Chinese', 'hi': 'Hindi'
-    }
+    language_names = get_language_names()
     
     selected_languages = st.sidebar.multiselect(
         "Choose languages to analyze",
@@ -350,10 +486,13 @@ def main():
         help="Select which languages to include in the analysis"
     )
     
-    st.sidebar.markdown("---")
+    # Metric Selection
+    st.sidebar.markdown("""
+    <div class="control-card">
+        <h3>📈 Metrics</h3>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Metric selection
-    st.sidebar.markdown("### 📈 Metrics")
     metrics = st.sidebar.multiselect(
         "Select performance metrics",
         ["Exact Match", "F1 Score", "BLEU Score"],
@@ -361,136 +500,87 @@ def main():
         help="Choose which metrics to display and analyze"
     )
     
-    # Add a quick stats section in sidebar
+    # Quick Stats
     if results and selected_models:
-        st.sidebar.markdown("---")
-        st.sidebar.markdown("### 📊 Quick Stats")
+        st.sidebar.markdown("""
+        <div class="control-card">
+            <h3>📊 Quick Stats</h3>
+        </div>
+        """, unsafe_allow_html=True)
         
         total_experiments = len([k for k in results.keys() if any(model.lower() in k for model in selected_models)])
         total_languages = len(selected_languages)
         
-        st.sidebar.metric("Experiments", total_experiments)
-        st.sidebar.metric("Languages", total_languages)
-        st.sidebar.metric("Models", len(selected_models))
+        col1, col2 = st.sidebar.columns(2)
+        with col1:
+            st.metric("Experiments", total_experiments)
+        with col2:
+            st.metric("Languages", total_languages)
     
-    # Main content tabs
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📈 Overview", "🌍 Language Analysis", "📊 Model Comparison", 
-        "🔬 Statistical Analysis", "⚙️ Configuration"
-    ])
-    
-    with tab1:
-        show_overview_tab(summary_metrics, selected_models, experiment_types)
-    
-    with tab2:
-        show_language_analysis_tab(results, selected_models, selected_languages, 
-                                 metrics, language_families, language_names)
-    
-    with tab3:
-        show_model_comparison_tab(results, selected_models, selected_languages, metrics)
-    
-    with tab4:
-        show_statistical_analysis_tab(results, selected_models, selected_languages)
-    
-    with tab5:
-        show_configuration_tab(configs)
+    return results, summary_metrics, selected_models, selected_languages, metrics
 
-def show_overview_tab(summary_metrics, selected_models, experiment_types):
-    """Show overview tab with summary metrics."""
-    st.header("📈 Experiment Overview")
-    
-    if not summary_metrics:
-        st.warning("⚠️ No results available for overview.")
-        return
-    
-    # Add overview description
+def create_header():
+    """Create the enhanced header."""
     st.markdown("""
-    <div style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); 
-                padding: 1.5rem; border-radius: 15px; margin-bottom: 2rem;">
-        <h4 style="margin: 0 0 1rem 0; color: #333;">📊 Performance Summary</h4>
-        <p style="margin: 0; color: #666;">
-            This overview provides a high-level comparison of model performance across different 
-            experiment types and metrics. Use the controls in the sidebar to filter and explore specific aspects.
-        </p>
+    <div class="main-header">
+        <h1>🌍 Cross-Lingual QA Dashboard</h1>
+        <p>Interactive analysis of mBERT vs mT5 performance across 11 languages</p>
     </div>
     """, unsafe_allow_html=True)
+
+def show_dashboard_overview(results, summary_metrics, selected_models):
+    """Show the main dashboard overview."""
     
-    # Create metrics columns with enhanced styling
-    cols = st.columns(len(selected_models) if selected_models else 1)
+    st.markdown("""
+    <div class="content-section">
+        <div class="section-header">
+            📊 Dashboard Overview
+        </div>
+    """, unsafe_allow_html=True)
     
-    for i, model in enumerate(selected_models):
-        with cols[i % len(cols)]:
-            # Enhanced model header
-            st.markdown(f"""
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                        padding: 1rem; border-radius: 10px; margin-bottom: 1rem; text-align: center;">
-                <h3 style="color: white; margin: 0;">🤖 {model}</h3>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Find results for this model
-            model_results = {}
-            for key, data in summary_metrics.items():
-                if model.lower() in key:
-                    model_results[key] = data
-            
-            if model_results:
-                for exp_type, metrics in model_results.items():
-                    # Enhanced experiment type header
-                    st.markdown(f"""
-                    <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); 
-                                padding: 0.8rem; border-radius: 8px; margin: 1rem 0;">
-                        <h4 style="margin: 0; color: #495057;">🧪 {exp_type.replace('_', ' ').title()}</h4>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Create metric cards
-                    metric_cols = st.columns(3)
-                    
-                    with metric_cols[0]:
-                        if 'avg_f1' in metrics:
-                            st.metric(
-                                "Average F1", 
-                                f"{metrics['avg_f1']:.3f}", 
-                                f"±{metrics['std_f1']:.3f}",
-                                help="F1 Score measures the harmonic mean of precision and recall"
-                            )
-                    
-                    with metric_cols[1]:
-                        if 'avg_exact_match' in metrics:
-                            st.metric(
-                                "Average EM", 
-                                f"{metrics['avg_exact_match']:.3f}", 
-                                f"±{metrics['std_exact_match']:.3f}",
-                                help="Exact Match measures the percentage of predictions that exactly match the ground truth"
-                            )
-                    
-                    with metric_cols[2]:
-                        if 'avg_bleu' in metrics:
-                            st.metric(
-                                "Average BLEU", 
-                                f"{metrics['avg_bleu']:.3f}", 
-                                f"±{metrics['std_bleu']:.3f}",
-                                help="BLEU Score measures the quality of generated text compared to reference text"
-                            )
-                    
-                    # Add performance insights
-                    if 'avg_f1' in metrics:
-                        f1_score = metrics['avg_f1']
-                        if f1_score > 0.7:
-                            st.success("🎯 Excellent performance!")
-                        elif f1_score > 0.5:
-                            st.info("✅ Good performance")
-                        else:
-                            st.warning("⚠️ Performance could be improved")
-                    
-                    st.markdown("---")
-            else:
-                st.info(f"No results found for {model}")
+    # Quick Stats Grid
+    st.markdown('<div class="quick-stats">', unsafe_allow_html=True)
     
-    # Add summary insights
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown("""
+        <div class="stat-card">
+            <div class="stat-value">11</div>
+            <div class="stat-label">Languages</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div class="stat-card">
+            <div class="stat-value">2</div>
+            <div class="stat-label">Models</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown("""
+        <div class="stat-card">
+            <div class="stat-value">2</div>
+            <div class="stat-label">Experiment Types</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        total_experiments = len([k for k in results.keys() if any(model.lower() in k for model in selected_models)]) if selected_models else 0
+        st.markdown(f"""
+        <div class="stat-card">
+            <div class="stat-value">{total_experiments}</div>
+            <div class="stat-label">Active Experiments</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Performance Summary
     if summary_metrics:
-        st.markdown("### 🔍 Key Insights")
+        st.markdown("### 🎯 Performance Summary")
         
         # Find best performing model
         best_model = None
@@ -509,23 +599,26 @@ def show_overview_tab(summary_metrics, selected_models, experiment_types):
         if all_f1_scores:
             min_f1, max_f1 = min(all_f1_scores), max(all_f1_scores)
             st.info(f"📊 Performance range: {min_f1:.3f} - {max_f1:.3f} (F1 Score)")
-            
-            if max_f1 - min_f1 < 0.1:
-                st.success("🎯 Models show consistent performance across experiments")
-            else:
-                st.warning("⚠️ Significant performance variation detected between experiments")
-
-def show_language_analysis_tab(results, selected_models, selected_languages, 
-                              metrics, language_families, language_names):
-    """Show language analysis tab."""
-    st.header("🌍 Language Performance Analysis")
     
-    if not results:
-        st.warning("No results available for language analysis.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+def show_performance_analysis(results, selected_models, selected_languages, metrics):
+    """Show detailed performance analysis."""
+    
+    st.markdown("""
+    <div class="content-section">
+        <div class="section-header">
+            📈 Performance Analysis
+        </div>
+    """, unsafe_allow_html=True)
+    
+    if not results or not selected_models:
+        st.warning("⚠️ No data available for performance analysis.")
+        st.markdown('</div>', unsafe_allow_html=True)
         return
     
     # Create performance by language plot
-    st.subheader("Performance by Language")
+    st.markdown("### 🌍 Performance by Language")
     
     # Prepare data for plotting
     plot_data = []
@@ -534,6 +627,8 @@ def show_language_analysis_tab(results, selected_models, selected_languages,
         "F1 Score": "f1", 
         "BLEU Score": "bleu"
     }
+    
+    language_names = get_language_names()
     
     for model in selected_models:
         for exp_type in ["zero_shot", "few_shot"]:
@@ -565,21 +660,26 @@ def show_language_analysis_tab(results, selected_models, selected_languages,
             facet_col='Metric',
             facet_row='Experiment',
             title="Performance by Language and Model",
-            hover_data=['Language_Code']
+            hover_data=['Language_Code'],
+            color_discrete_sequence=['#667eea', '#764ba2']
         )
         
         fig.update_layout(
             height=600,
             showlegend=True,
-            xaxis_tickangle=-45
+            xaxis_tickangle=-45,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
         )
         
-        st.plotly_chart(fig, width='stretch')
+        st.plotly_chart(fig, use_container_width=True)
         
         # Language family analysis
-        st.subheader("Performance by Language Family")
+        st.markdown("### 🏛️ Performance by Language Family")
         
+        language_families = create_language_family_mapping()
         family_data = []
+        
         for model in selected_models:
             for exp_type in ["zero_shot", "few_shot"]:
                 key = f"{exp_type}_{model.lower()}"
@@ -610,28 +710,44 @@ def show_language_analysis_tab(results, selected_models, selected_languages,
                 color='Model',
                 facet_col='Experiment',
                 title="Average F1 Score by Language Family",
-                hover_data=['Count']
+                hover_data=['Count'],
+                color_discrete_sequence=['#667eea', '#764ba2']
             )
             
-            st.plotly_chart(fig_family, width='stretch')
+            fig_family.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)'
+            )
+            
+            st.plotly_chart(fig_family, use_container_width=True)
     
     else:
         st.info("No data available for the selected filters.")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-def show_model_comparison_tab(results, selected_models, selected_languages, metrics):
-    """Show model comparison tab."""
-    st.header("📊 Model Comparison")
+def show_model_comparison(results, selected_models, selected_languages, metrics):
+    """Show model comparison analysis."""
+    
+    st.markdown("""
+    <div class="content-section">
+        <div class="section-header">
+            ⚖️ Model Comparison
+        </div>
+    """, unsafe_allow_html=True)
     
     if len(selected_models) < 2:
         st.info("Select at least 2 models to see comparison.")
+        st.markdown('</div>', unsafe_allow_html=True)
         return
     
     if not results:
         st.warning("No results available for model comparison.")
+        st.markdown('</div>', unsafe_allow_html=True)
         return
     
     # Model comparison plot
-    st.subheader("Direct Model Comparison")
+    st.markdown("### 📊 Direct Model Comparison")
     
     comparison_data = []
     metric_mapping = {
@@ -674,43 +790,56 @@ def show_model_comparison_tab(results, selected_models, selected_languages, metr
             facet_col='Metric',
             facet_row='Experiment',
             title="Model Comparison Across Languages",
-            barmode='group'
+            barmode='group',
+            color_discrete_sequence=['#667eea', '#764ba2']
         )
         
         fig.update_layout(
             height=600,
             showlegend=True,
-            xaxis_tickangle=-45
+            xaxis_tickangle=-45,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
         )
         
-        st.plotly_chart(fig, width='stretch')
+        st.plotly_chart(fig, use_container_width=True)
         
         # Summary statistics
-        st.subheader("Comparison Summary")
+        st.markdown("### 📋 Comparison Summary")
         
         summary_stats = df.groupby(['Model', 'Experiment', 'Metric'])['Score'].agg([
             'mean', 'std', 'min', 'max'
         ]).round(3)
         
-        st.dataframe(summary_stats, width='stretch')
+        st.dataframe(summary_stats, use_container_width=True)
     
     else:
         st.info("No comparison data available for the selected models and languages.")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-def show_statistical_analysis_tab(results, selected_models, selected_languages):
-    """Show statistical analysis tab."""
-    st.header("🔬 Statistical Analysis")
+def show_statistical_analysis(results, selected_models, selected_languages):
+    """Show statistical analysis."""
+    
+    st.markdown("""
+    <div class="content-section">
+        <div class="section-header">
+            🔬 Statistical Analysis
+        </div>
+    """, unsafe_allow_html=True)
     
     if len(selected_models) < 2:
         st.info("Select at least 2 models to see statistical analysis.")
+        st.markdown('</div>', unsafe_allow_html=True)
         return
     
     if not results:
         st.warning("No results available for statistical analysis.")
+        st.markdown('</div>', unsafe_allow_html=True)
         return
     
     # Statistical significance testing
-    st.subheader("Statistical Significance Tests")
+    st.markdown("### 📊 Statistical Significance Tests")
     
     # Prepare data for statistical tests
     test_data = {}
@@ -737,7 +866,7 @@ def show_statistical_analysis_tab(results, selected_models, selected_languages):
         from scipy import stats
         
         for test_name, model_scores in test_data.items():
-            st.subheader(f"T-test: {test_name.replace('_', ' ').title()}")
+            st.markdown(f"#### T-test: {test_name.replace('_', ' ').title()}")
             
             models = list(model_scores.keys())
             if len(models) >= 2:
@@ -771,18 +900,66 @@ def show_statistical_analysis_tab(results, selected_models, selected_languages):
     
     else:
         st.info("No data available for statistical analysis.")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-def show_configuration_tab(configs):
-    """Show configuration tab."""
-    st.header("⚙️ Experiment Configuration")
+def show_configuration(configs):
+    """Show configuration information."""
+    
+    st.markdown("""
+    <div class="content-section">
+        <div class="section-header">
+            ⚙️ Experiment Configuration
+        </div>
+    """, unsafe_allow_html=True)
     
     if not configs:
         st.warning("No configuration files found.")
+        st.markdown('</div>', unsafe_allow_html=True)
         return
     
     for config_name, config_data in configs.items():
         with st.expander(f"📄 {config_name.replace('_', ' ').title()}"):
             st.json(config_data)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+def main():
+    """Main dashboard application."""
+    
+    # Create header
+    create_header()
+    
+    # Create sidebar and get data
+    results, summary_metrics, selected_models, selected_languages, metrics = create_sidebar()
+    
+    if results is None:
+        return
+    
+    # Success message when data loads
+    st.success("✅ Data loaded successfully! Ready to explore your cross-lingual QA results.")
+    
+    # Main content with better tab structure
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "🏠 Dashboard", "📈 Performance", "⚖️ Comparison", 
+        "🔬 Statistics", "⚙️ Configuration"
+    ])
+    
+    with tab1:
+        show_dashboard_overview(results, summary_metrics, selected_models)
+    
+    with tab2:
+        show_performance_analysis(results, selected_models, selected_languages, metrics)
+    
+    with tab3:
+        show_model_comparison(results, selected_models, selected_languages, metrics)
+    
+    with tab4:
+        show_statistical_analysis(results, selected_models, selected_languages)
+    
+    with tab5:
+        configs = load_configurations()
+        show_configuration(configs)
 
 if __name__ == "__main__":
     main()
